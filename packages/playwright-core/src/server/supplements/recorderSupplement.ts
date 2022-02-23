@@ -301,12 +301,12 @@ class ContextRecorder extends EventEmitter {
     const language = params.language || context._browser.options.sdkLanguage;
 
     const languages = new Set([
-      new JavaLanguageGenerator(),
-      new JavaScriptLanguageGenerator(false),
+      // new JavaLanguageGenerator(),
+      // new JavaScriptLanguageGenerator(false),
       new JavaScriptLanguageGenerator(true),
-      new PythonLanguageGenerator(false),
-      new PythonLanguageGenerator(true),
-      new CSharpLanguageGenerator(),
+      // new PythonLanguageGenerator(false),
+      // new PythonLanguageGenerator(true),
+      // new CSharpLanguageGenerator(),
     ]);
     const primaryLanguage = [...languages].find(l => l.id === language)!;
     if (!primaryLanguage)
