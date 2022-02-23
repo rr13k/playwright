@@ -316,8 +316,7 @@ class ContextRecorder extends EventEmitter {
     const orderedLanguages = [primaryLanguage, ...languages];
 
     this._recorderSources = [];
-    // cherry 不需要头尾信息
-    const generator = new CodeGenerator(context._browser.options.name, false, params.launchOptions || {}, params.contextOptions || {}, params.device, params.saveStorage);
+    const generator = new CodeGenerator(context._browser.options.name, !!params.startRecording, params.launchOptions || {}, params.contextOptions || {}, params.device, params.saveStorage);
     const throttledOutputFile = params.outputFile ? new ThrottledFile(params.outputFile) : null;
     generator.on('change', () => {
       this._recorderSources = [];
