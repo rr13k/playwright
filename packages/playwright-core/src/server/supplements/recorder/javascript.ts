@@ -97,7 +97,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
       formatter.add(`${pageAlias}.waitForEvent('download'),`);
 
     const prefix = (signals.popup || signals.waitForNavigation || signals.download) ? '' : 'await ';
-    const actionCall = this._generateActionCall(action);
+    const actionCall = this.__generateActionCall(action);
     const suffix = (signals.waitForNavigation || emitPromiseAll) ? '' : ';';
     formatter.add(`${prefix}${subject}.${actionCall}${suffix}`);
 
@@ -111,6 +111,50 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     }
     return formatter.format();
   }
+
+  private __generateActionCall(action: Action): string {
+    switch (action.name) {
+      case 'openPage':
+        throw Error('Not reached');
+      case 'closePage':
+        return 'close()';
+      case 'click': {
+        let method = 'click';
+        if (action.clickCount === 2)
+          method = 'dblclick';
+        const modifiers = toModifiers(action.modifiers);
+        const options: MouseClickOptions = {};
+        if (action.button !== 'left')
+          options.button = action.button;
+        if (modifiers.length)
+          options.modifiers = modifiers;
+        if (action.clickCount > 2)
+          options.clickCount = action.clickCount;
+        if (action.position)
+          options.position = action.position;
+        const optionsString = formatOptions(options, false);
+        return  `dom.click(${action.selector})`
+      }
+      case 'check':
+        return asLocator(action.selector) + `.check()`;
+      case 'uncheck':
+        return asLocator(action.selector) + `.uncheck()`;
+      case 'fill':
+        return asLocator(action.selector) + `.fill(${quote(action.text)})`;
+      case 'setInputFiles':
+        return asLocator(action.selector) + `.setInputFiles(${formatObject(action.files.length === 1 ? action.files[0] : action.files)})`;
+      case 'press': {
+        const modifiers = toModifiers(action.modifiers);
+        const shortcut = [...modifiers, action.key].join('+');
+        return asLocator(action.selector) + `.press(${quote(shortcut)})`;
+      }
+      case 'navigate':
+        return `goto(${quote(action.url)})`;
+      case 'select':
+        return asLocator(action.selector) + `.selectOption(${formatObject(action.options.length > 1 ? action.options : action.options[0])})`;
+    }
+  }
+
 
   private _generateActionCall(action: Action): string {
     switch (action.name) {
