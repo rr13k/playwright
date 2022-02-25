@@ -80,6 +80,7 @@ export class RecorderSupplement implements InstrumentationListener {
     const recorderApp = await RecorderApp.open(this._context._browser.options.sdkLanguage, !!this._context._browser.options.headful);
     this._recorderApp = recorderApp;
     recorderApp.once('close', () => {
+      process.emit('message',this._contextRecorder.codeScript, null)
       this._debugger.resume(false);
       this._recorderApp = null;
     });
@@ -293,7 +294,7 @@ class ContextRecorder extends EventEmitter {
   private _context: BrowserContext;
   private _params: channels.BrowserContextRecorderSupplementEnableParams;
   private _recorderSources: Source[];
-  private codeScript: string
+  public codeScript: string
 
   constructor(context: BrowserContext, params: channels.BrowserContextRecorderSupplementEnableParams) {
     super();
@@ -347,8 +348,6 @@ class ContextRecorder extends EventEmitter {
     }
     process.on('exit', () => {
       if(throttledOutputFile) throttledOutputFile.flush();
-      // 监听到了退出怎么把脚本带出去呢
-      process.emit('message',this.codeScript, null)
     });
     this._generator = generator;
   }

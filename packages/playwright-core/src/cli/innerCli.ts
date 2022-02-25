@@ -15,6 +15,7 @@
  */
 
 /* eslint-disable no-console */
+// @ts-nocheck
 
 import fs from 'fs';
 import os from 'os';
@@ -22,7 +23,7 @@ import path from 'path';
 import { program, Command } from 'commander';
 import { runDriver, runServer, printApiJson, launchBrowserServer } from './driver';
 import { showTraceViewer } from '../server/trace/viewer/traceViewer';
-import * as playwright from '../..';
+import * as playwright from '../';
 import { BrowserContext } from '../client/browserContext';
 import { Browser } from '../client/browser';
 import { Page } from '../client/page';
@@ -243,26 +244,22 @@ async function open(options: Options, url: string | undefined, language: string)
 }
 
 export async function codegen(options: Options, url: string | undefined, language: string, outputFile?: string) {
-  const { context, launchOptions, contextOptions } = await launchContext(options, !!process.env.PWTEST_CLI_HEADLESS, process.env.PWTEST_CLI_EXECUTABLE_PATH);
-  await context._enableRecorder({
-    language,
-    launchOptions,
-    contextOptions,
-    device: options.device,
-    saveStorage: options.saveStorage,
-    startRecording: true,
-    outputFile: outputFile ? path.resolve(outputFile) : undefined
-  });
-
-  // 监听录制完成
-  process.on('message',(msg)=>{
-    console.log('codegen code:',msg);
-    return msg
-  })
-
-  await openPage(context, url);
-  if (process.env.PWTEST_CLI_EXIT)
-    await Promise.all(context.pages().map(p => p.close()));
+    const {
+      context,
+      launchOptions,
+      contextOptions
+    } = await launchContext(options, !!process.env.PWTEST_CLI_HEADLESS, process.env.PWTEST_CLI_EXECUTABLE_PATH);
+    await context._enableRecorder({
+      language,
+      launchOptions,
+      contextOptions,
+      device: options.device,
+      saveStorage: options.saveStorage,
+      startRecording: true,
+      outputFile: outputFile ? path.resolve(outputFile) : undefined
+    }); // 监听录制完成
+    await openPage(context, url);
+    if (process.env.PWTEST_CLI_EXIT) await Promise.all(context.pages().map(p => p.close()));
 }
 
 async function waitForPage(page: Page, captureOptions: CaptureOptions) {

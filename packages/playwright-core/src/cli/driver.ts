@@ -17,7 +17,7 @@
 /* eslint-disable no-console */
 
 import fs from 'fs';
-import * as playwright from '../..';
+import * as playwright from '..';
 import { BrowserType } from '../client/browserType';
 import { LaunchServerOptions } from '../client/types';
 import { DispatcherConnection, Root } from '../dispatchers/dispatcher';

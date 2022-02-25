@@ -772,4 +772,4 @@ export function findChromiumChannel(sdkLanguage: string): string | undefined {
   return channel;
 }
 
-export const registry = new Registry(require('../../browsers.json'));
+export const registry = new Registry(require('../browsers.json'));
