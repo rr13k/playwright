@@ -40,7 +40,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
       return '';
 
     const pageAlias = actionInContext.frame.pageAlias;
-    const formatter = new JavaScriptFormatter(2);
+    const formatter = new JavaScriptFormatter();
     formatter.newLine();
     formatter.add('// ' + actionTitle(action));
 
@@ -76,12 +76,12 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     if (emitPromiseAll) {
       // Generate either await Promise.all([]) or
       // const [popup1] = await Promise.all([]).
-      let leftHandSide = '';
-      if (signals.popup)
-        leftHandSide = `const [${signals.popup.popupAlias}] = `;
-      else if (signals.download)
-        leftHandSide = `const [download] = `;
-      formatter.add(`${leftHandSide}await Promise.all([`);
+      // let leftHandSide = '';
+      // if (signals.popup)
+      //   leftHandSide = `const [${signals.popup.popupAlias}] = `;
+      // else if (signals.download)
+      //   leftHandSide = `const [download] = `;
+      // formatter.add(`${leftHandSide}await Promise.all([`);
     }
 
     // Popup signals.
@@ -90,7 +90,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
 
     // Navigation signal.
     if (signals.waitForNavigation)
-      formatter.add(`${pageAlias}.waitForNavigation(/*{ url: ${quote(signals.waitForNavigation.url)} }*/),`);
+      formatter.add(`${pageAlias}.to(${quote(signals.waitForNavigation.url)}),`);
 
     // Download signals.
     if (signals.download)
@@ -99,15 +99,15 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     const prefix = (signals.popup || signals.waitForNavigation || signals.download) ? '' : 'await ';
     const actionCall = this.__generateActionCall(action);
     const suffix = (signals.waitForNavigation || emitPromiseAll) ? '' : ';';
-    formatter.add(`${prefix}${subject}.${actionCall}${suffix}`);
+    formatter.add(`${prefix}${actionCall}${suffix}`);
 
     if (emitPromiseAll) {
-      formatter.add(`]);`);
+      // formatter.add(`]);`);
     } else if (signals.assertNavigation) {
-      if (this._isTest)
-        formatter.add(`  await expect(${pageAlias}).toHaveURL(${quote(signals.assertNavigation.url)});`);
-      else
-        formatter.add(`  // assert.equal(${pageAlias}.url(), ${quote(signals.assertNavigation.url)});`);
+      // if (this._isTest)
+      //   formatter.add(`  await expect(${pageAlias}).toHaveURL(${quote(signals.assertNavigation.url)});`);
+      // else
+      //   formatter.add(`  // assert.equal(${pageAlias}.url(), ${quote(signals.assertNavigation.url)});`);
     }
     return formatter.format();
   }
@@ -133,23 +133,23 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
         if (action.position)
           options.position = action.position;
         const optionsString = formatOptions(options, false);
-        return  `dom.click(${action.selector})`
+        return `dom.click(${quote(action.selector)})`;
       }
       case 'check':
         return asLocator(action.selector) + `.check()`;
       case 'uncheck':
         return asLocator(action.selector) + `.uncheck()`;
       case 'fill':
-        return asLocator(action.selector) + `.fill(${quote(action.text)})`;
+        return `dom.reSet(${quote(action.selector)},${quote(action.text)})`
       case 'setInputFiles':
-        return asLocator(action.selector) + `.setInputFiles(${formatObject(action.files.length === 1 ? action.files[0] : action.files)})`;
+        return `dom.upload(${quote(action.selector)},${formatObject(action.files.length === 1 ? action.files[0] : action.files)})`;
       case 'press': {
         const modifiers = toModifiers(action.modifiers);
         const shortcut = [...modifiers, action.key].join('+');
         return asLocator(action.selector) + `.press(${quote(shortcut)})`;
       }
       case 'navigate':
-        return `goto(${quote(action.url)})`;
+        return `page.to(${quote(action.url)})`;
       case 'select':
         return asLocator(action.selector) + `.selectOption(${formatObject(action.options.length > 1 ? action.options : action.options[0])})`;
     }

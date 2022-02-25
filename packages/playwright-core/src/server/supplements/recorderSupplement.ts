@@ -293,12 +293,14 @@ class ContextRecorder extends EventEmitter {
   private _context: BrowserContext;
   private _params: channels.BrowserContextRecorderSupplementEnableParams;
   private _recorderSources: Source[];
+  private codeScript: string
 
   constructor(context: BrowserContext, params: channels.BrowserContextRecorderSupplementEnableParams) {
     super();
     this._context = context;
     this._params = params;
     const language = params.language || context._browser.options.sdkLanguage;
+    this.codeScript = ''
 
     const languages = new Set([
       // new JavaLanguageGenerator(),
@@ -330,6 +332,7 @@ class ContextRecorder extends EventEmitter {
         source.revealLine = source.text.split('\n').length - 1;
         this._recorderSources.push(source);
         if (languageGenerator === orderedLanguages[0])
+          this.codeScript = source.text
           throttledOutputFile?.setContent(source.text);
       }
       this.emit(ContextRecorder.Events.Change, {
@@ -341,10 +344,12 @@ class ContextRecorder extends EventEmitter {
       context.on(BrowserContext.Events.BeforeClose, () => {
         throttledOutputFile.flush();
       });
-      process.on('exit', () => {
-        throttledOutputFile.flush();
-      });
     }
+    process.on('exit', () => {
+      if(throttledOutputFile) throttledOutputFile.flush();
+      // 监听到了退出怎么把脚本带出去呢
+      process.emit('message',this.codeScript, null)
+    });
     this._generator = generator;
   }
 

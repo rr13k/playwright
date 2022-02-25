@@ -34,49 +34,6 @@ import { spawnAsync, getPlaywrightVersion } from '../utils/utils';
 import { launchGridAgent } from '../grid/gridAgent';
 import { GridServer, GridFactory } from '../grid/gridServer';
 
-const packageJSON = require('../../package.json');
-
-program
-    .version('Version ' + (process.env.PW_CLI_DISPLAY_VERSION || packageJSON.version))
-    .name(buildBasePlaywrightCLICommand(process.env.PW_LANG_NAME));
-
-commandWithOpenOptions('open [url]', 'open page in browser specified via -b, --browser', [])
-    .action(function(url, options) {
-      open(options, url, language()).catch(logErrorAndExit);
-    })
-    .addHelpText('afterAll', `
-Examples:
-
-  $ open  $ open -b webkit https://example.com`);
-
-commandWithOpenOptions('codegen [url]', 'open page and generate code for user actions',
-    [
-      ['-o, --output <file name>', 'saves the generated script to a file'],
-      ['--target <language>', `language to generate, one of javascript, test, python, python-async, csharp`, language()],
-    ]).action(function(url, options) {
-  codegen(options, url, options.target, options.output).catch(logErrorAndExit);
-}).addHelpText('afterAll', `
-Examples:
-
-  $ codegen
-  $ codegen --target=python
-  $ codegen -b webkit https://example.com`);
-
-program
-    .command('debug <app> [args...]', { hidden: true })
-    .description('run command in debug mode: disable timeout, open inspector')
-    .allowUnknownOption(true)
-    .action(function(app, options) {
-      spawn(app, options, {
-        env: { ...process.env, PWDEBUG: '1' },
-        stdio: 'inherit'
-      });
-    }).addHelpText('afterAll', `
-Examples:
-
-  $ debug node test.js
-  $ debug npm run test`);
-
 function suggestedBrowsersToInstall() {
   return registry.executables().filter(e => e.installType !== 'none' && e.type !== 'tool').map(e => e.name).join(', ');
 }
@@ -97,190 +54,6 @@ function checkBrowsersToInstall(args: string[]): Executable[] {
   }
   return executables;
 }
-
-program
-    .command('install [browser...]')
-    .description('ensure browsers necessary for this version of Playwright are installed')
-    .option('--with-deps', 'install system dependencies for browsers')
-    .action(async function(args: string[], options: { withDeps?: boolean }) {
-      try {
-        if (!args.length) {
-          const executables = registry.defaultExecutables();
-          if (options.withDeps)
-            await registry.installDeps(executables, false);
-          await registry.install(executables);
-        } else {
-          const installDockerImage = args.some(arg => arg === 'docker-image');
-          args = args.filter(arg => arg !== 'docker-image');
-          if (installDockerImage) {
-            const imageName = `mcr.microsoft.com/playwright:v${getPlaywrightVersion()}-focal`;
-            const { code } = await spawnAsync('docker', ['pull', imageName], { stdio: 'inherit' });
-            if (code !== 0) {
-              console.log('Failed to pull docker image');
-              process.exit(1);
-            }
-          }
-
-          const executables = checkBrowsersToInstall(args);
-          if (options.withDeps)
-            await registry.installDeps(executables, false);
-          await registry.install(executables);
-        }
-      } catch (e) {
-        console.log(`Failed to install browsers\n${e}`);
-        process.exit(1);
-      }
-    }).addHelpText('afterAll', `
-
-Examples:
-  - $ install
-    Install default browsers.
-
-  - $ install chrome firefox
-    Install custom browsers, supports ${suggestedBrowsersToInstall()}.`);
-
-
-program
-    .command('install-deps [browser...]')
-    .description('install dependencies necessary to run browsers (will ask for sudo permissions)')
-    .option('--dry-run', 'Do not execute installation commands, only print them')
-    .action(async function(args: string[], options: { dryRun?: boolean }) {
-      try {
-        if (!args.length)
-          await registry.installDeps(registry.defaultExecutables(), !!options.dryRun);
-        else
-          await registry.installDeps(checkBrowsersToInstall(args), !!options.dryRun);
-      } catch (e) {
-        console.log(`Failed to install browser dependencies\n${e}`);
-        process.exit(1);
-      }
-    }).addHelpText('afterAll', `
-Examples:
-  - $ install-deps
-    Install dependencies for default browsers.
-
-  - $ install-deps chrome firefox
-    Install dependencies for specific browsers, supports ${suggestedBrowsersToInstall()}.`);
-
-const browsers = [
-  { alias: 'cr', name: 'Chromium', type: 'chromium' },
-  { alias: 'ff', name: 'Firefox', type: 'firefox' },
-  { alias: 'wk', name: 'WebKit', type: 'webkit' },
-];
-
-for (const { alias, name, type } of browsers) {
-  commandWithOpenOptions(`${alias} [url]`, `open page in ${name}`, [])
-      .action(function(url, options) {
-        open({ ...options, browser: type }, url, options.target).catch(logErrorAndExit);
-      }).addHelpText('afterAll', `
-Examples:
-
-  $ ${alias} https://example.com`);
-}
-
-commandWithOpenOptions('screenshot <url> <filename>', 'capture a page screenshot',
-    [
-      ['--wait-for-selector <selector>', 'wait for selector before taking a screenshot'],
-      ['--wait-for-timeout <timeout>', 'wait for timeout in milliseconds before taking a screenshot'],
-      ['--full-page', 'whether to take a full page screenshot (entire scrollable area)'],
-    ]).action(function(url, filename, command) {
-  screenshot(command, command, url, filename).catch(logErrorAndExit);
-}).addHelpText('afterAll', `
-Examples:
-
-  $ screenshot -b webkit https://example.com example.png`);
-
-commandWithOpenOptions('pdf <url> <filename>', 'save page as pdf',
-    [
-      ['--wait-for-selector <selector>', 'wait for given selector before saving as pdf'],
-      ['--wait-for-timeout <timeout>', 'wait for given timeout in milliseconds before saving as pdf'],
-    ]).action(function(url, filename, options) {
-  pdf(options, options, url, filename).catch(logErrorAndExit);
-}).addHelpText('afterAll', `
-Examples:
-
-  $ pdf https://example.com example.pdf`);
-
-program
-    .command('experimental-grid-server', { hidden: true })
-    .option('--port <port>', 'grid port; defaults to 3333')
-    .option('--agent-factory <factory>', 'path to grid agent factory or npm package')
-    .option('--auth-token <authToken>', 'optional authentication token')
-    .action(function(options) {
-      launchGridServer(options.agentFactory, options.port || 3333, options.authToken);
-    });
-
-program
-    .command('experimental-grid-agent', { hidden: true })
-    .requiredOption('--agent-id <agentId>', 'agent ID')
-    .requiredOption('--grid-url <gridURL>', 'grid URL')
-    .action(function(options) {
-      launchGridAgent(options.agentId, options.gridUrl);
-    });
-
-program
-    .command('show-trace [trace...]')
-    .option('-b, --browser <browserType>', 'browser to use, one of cr, chromium, ff, firefox, wk, webkit', 'chromium')
-    .description('Show trace viewer')
-    .action(function(traces, options) {
-      if (options.browser === 'cr')
-        options.browser = 'chromium';
-      if (options.browser === 'ff')
-        options.browser = 'firefox';
-      if (options.browser === 'wk')
-        options.browser = 'webkit';
-      showTraceViewer(traces, options.browser, false, 9322).catch(logErrorAndExit);
-    }).addHelpText('afterAll', `
-Examples:
-
-  $ show-trace https://example.com/trace.zip`);
-
-if (!process.env.PW_LANG_NAME) {
-  let playwrightTestPackagePath = null;
-  try {
-    playwrightTestPackagePath = require.resolve('@playwright/test/lib/cli', {
-      paths: [__dirname, process.cwd()]
-    });
-  } catch {}
-
-  if (playwrightTestPackagePath) {
-    require(playwrightTestPackagePath).addTestCommand(program);
-    require(playwrightTestPackagePath).addShowReportCommand(program);
-    require(playwrightTestPackagePath).addListFilesCommand(program);
-  } else {
-    {
-      const command = program.command('test').allowUnknownOption(true);
-      command.description('Run tests with Playwright Test. Available in @playwright/test package.');
-      command.action(async () => {
-        console.error('Please install @playwright/test package to use Playwright Test.');
-        console.error('  npm install -D @playwright/test');
-        process.exit(1);
-      });
-    }
-
-    {
-      const command = program.command('show-report').allowUnknownOption(true);
-      command.description('Show Playwright Test HTML report. Available in @playwright/test package.');
-      command.action(async () => {
-        console.error('Please install @playwright/test package to use Playwright Test.');
-        console.error('  npm install -D @playwright/test');
-        process.exit(1);
-      });
-    }
-  }
-}
-
-if (process.argv[2] === 'run-driver')
-  runDriver();
-else if (process.argv[2] === 'run-server')
-  runServer(process.argv[3] ? +process.argv[3] : undefined).catch(logErrorAndExit);
-else if (process.argv[2] === 'print-api-json')
-  printApiJson();
-else if (process.argv[2] === 'launch-server')
-  launchBrowserServer(process.argv[3], process.argv[4]).catch(logErrorAndExit);
-else
-  program.parse(process.argv);
-
 
 type Options = {
   browser: string;
@@ -469,7 +242,7 @@ async function open(options: Options, url: string | undefined, language: string)
     await Promise.all(context.pages().map(p => p.close()));
 }
 
-async function codegen(options: Options, url: string | undefined, language: string, outputFile?: string) {
+export async function codegen(options: Options, url: string | undefined, language: string, outputFile?: string) {
   const { context, launchOptions, contextOptions } = await launchContext(options, !!process.env.PWTEST_CLI_HEADLESS, process.env.PWTEST_CLI_EXECUTABLE_PATH);
   await context._enableRecorder({
     language,
@@ -480,6 +253,13 @@ async function codegen(options: Options, url: string | undefined, language: stri
     startRecording: true,
     outputFile: outputFile ? path.resolve(outputFile) : undefined
   });
+
+  // 监听录制完成
+  process.on('message',(msg)=>{
+    console.log('codegen code:',msg);
+    return msg
+  })
+
   await openPage(context, url);
   if (process.env.PWTEST_CLI_EXIT)
     await Promise.all(context.pages().map(p => p.close()));
@@ -602,17 +382,4 @@ async function launchGridServer(factoryPathOrPackageName: string, port: number, 
   const gridServer = new GridServer(factory as GridFactory, authToken);
   await gridServer.start(port);
   console.log('Grid server is running at ' + gridServer.urlPrefix());
-}
-
-function buildBasePlaywrightCLICommand(cliTargetLang: string | undefined): string {
-  switch (cliTargetLang) {
-    case 'python':
-      return `playwright`;
-    case 'java':
-      return `mvn exec:java -e -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="...options.."`;
-    case 'csharp':
-      return `pwsh bin\\Debug\\netX\\playwright.ps1`;
-    default:
-      return `npx playwright`;
-  }
 }
