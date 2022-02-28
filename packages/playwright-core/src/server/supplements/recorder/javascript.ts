@@ -30,7 +30,7 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
 
   constructor(isTest: boolean) {
     this.id = isTest ? 'test' : 'javascript';
-    this.fileName = isTest ? 'Playwright Test' : 'JavaScript';
+    this.fileName = isTest ? 'test' : 'JavaScript';
     this._isTest = isTest;
   }
 
@@ -140,7 +140,8 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
       case 'uncheck':
         return asLocator(action.selector) + `.uncheck()`;
       case 'fill':
-        return `dom.reSet(${quote(action.selector)},${quote(action.text)})`
+        // return `dom.reSet(${quote(action.selector)},${quote(action.text)})`
+        return `dom.fill(${quote(action.selector)},${quote(action.text)})`;
       case 'setInputFiles':
         return `dom.upload(${quote(action.selector)},${formatObject(action.files.length === 1 ? action.files[0] : action.files)})`;
       case 'press': {
