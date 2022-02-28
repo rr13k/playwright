@@ -27,5 +27,5 @@ if (process.env.PW_EXPERIMENTAL_TS_ESM) {
     if (code !== 0 && code !== null) process.exit(code);
   });
 } else {
-  require('./innerCli');
+  require('./innerCli_debug');
 }

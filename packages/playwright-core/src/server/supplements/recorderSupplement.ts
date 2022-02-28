@@ -80,6 +80,10 @@ export class RecorderSupplement implements InstrumentationListener {
     const recorderApp = await RecorderApp.open(this._context._browser.options.sdkLanguage, !!this._context._browser.options.headful);
     this._recorderApp = recorderApp;
     recorderApp.once('close', () => {
+      process.emit('message', {
+        type: 'live_finished',
+        script: this._contextRecorder.scriptText
+      }, null);
       this._debugger.resume(false);
       this._recorderApp = null;
     });
@@ -293,20 +297,17 @@ class ContextRecorder extends EventEmitter {
   private _context: BrowserContext;
   private _params: channels.BrowserContextRecorderSupplementEnableParams;
   private _recorderSources: Source[];
+  public scriptText :string;
 
   constructor(context: BrowserContext, params: channels.BrowserContextRecorderSupplementEnableParams) {
     super();
     this._context = context;
     this._params = params;
     const language = params.language || context._browser.options.sdkLanguage;
+    this.scriptText = ''
 
     const languages = new Set([
-      new JavaLanguageGenerator(),
-      new JavaScriptLanguageGenerator(false),
       new JavaScriptLanguageGenerator(true),
-      new PythonLanguageGenerator(false),
-      new PythonLanguageGenerator(true),
-      new CSharpLanguageGenerator(),
     ]);
     const primaryLanguage = [...languages].find(l => l.id === language)!;
     if (!primaryLanguage)
@@ -329,8 +330,10 @@ class ContextRecorder extends EventEmitter {
         };
         source.revealLine = source.text.split('\n').length - 1;
         this._recorderSources.push(source);
-        if (languageGenerator === orderedLanguages[0])
+        if (languageGenerator === orderedLanguages[0]){
           throttledOutputFile?.setContent(source.text);
+          this.scriptText = source.text
+        }
       }
       this.emit(ContextRecorder.Events.Change, {
         sources: this._recorderSources,

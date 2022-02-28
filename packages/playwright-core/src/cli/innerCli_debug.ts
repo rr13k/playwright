@@ -22,7 +22,7 @@ import path from 'path';
 import { program, Command } from 'commander';
 import { runDriver, runServer, printApiJson, launchBrowserServer } from './driver';
 import { showTraceViewer } from '../server/trace/viewer/traceViewer';
-import * as playwright from '../../types/types';
+import * as playwright from '../..';
 import { BrowserContext } from '../client/browserContext';
 import { Browser } from '../client/browser';
 import { Page } from '../client/page';
@@ -324,7 +324,7 @@ type CaptureOptions = {
   fullPage: boolean;
 };
 
-async function launchContext(options: Options, headless: boolean, executablePath?: string): Promise<{ browser: Browser, browserName: string, launchOptions: LaunchOptions, contextOptions: BrowserContextOptions, context: BrowserContext }> {
+export async function launchContext(options: Options, headless: boolean, executablePath?: string,isClose:boolean = false): Promise<{ browser: Browser, browserName: string, launchOptions: LaunchOptions, contextOptions: BrowserContextOptions, context: BrowserContext }> {
   validateOptions(options);
   const browserType = lookupBrowserType(options);
   const launchOptions: LaunchOptions = { headless, executablePath };
@@ -442,7 +442,9 @@ async function launchContext(options: Options, headless: boolean, executablePath
       if (hasPage)
         return;
       // Avoid the error when the last page is closed because the browser has been closed.
-      closeBrowser().catch(e => null);
+      if(isClose){
+        closeBrowser().catch(e => null);
+      }
     });
   });
   if (options.timeout) {
@@ -497,6 +499,10 @@ async function codegen(options: Options, url: string | undefined, language: stri
     startRecording: true,
     outputFile: outputFile ? path.resolve(outputFile) : undefined
   });
+
+  process.on('message',(code)=>{
+    console.log('code:',code)
+  })
   await openPage(context, url);
   if (process.env.PWTEST_CLI_EXIT)
     await Promise.all(context.pages().map(p => p.close()));
