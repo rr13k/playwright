@@ -102,6 +102,14 @@ export class JavaScriptLanguageGenerator implements LanguageGenerator {
     formatter.add(`${prefix}${actionCall}${suffix}`);
 
     if (emitPromiseAll) {
+        // 先手动改步骤await
+        for(let index in formatter._lines){
+          if(formatter._lines[index].length > 0){
+            if(/^dom.(.+)/.test(formatter._lines[index] ) || /^page.(.+)/.test(formatter._lines[index])){
+              formatter._lines[index] =  'await ' + formatter._lines[index]
+            }
+          }
+        }
       // formatter.add(`]);`);
     } else if (signals.assertNavigation) {
       // if (this._isTest)
@@ -257,7 +265,7 @@ function formatContextOptions(options: BrowserContextOptions, deviceName: string
 export class JavaScriptFormatter {
   private _baseIndent: string;
   private _baseOffset: string;
-  private _lines: string[] = [];
+  public _lines: string[] = [];
 
   constructor(offset = 0) {
     this._baseIndent = ' '.repeat(2);
